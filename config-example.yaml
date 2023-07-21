@@ -1,0 +1,7 @@
+tracking_files:
+  - name: backup_manager
+    source: "build/BackupManager/build_windows_x64.exe"
+    dest: "C:/Program Files/Acronis/BackupManager/backup_manager.exe"
+  - name: account_server
+    source: "build/AccountServer/build_windows_x64.exe"
+    dest: "C:/Program Files/Acronis/AccountServer/account_server.exe"
