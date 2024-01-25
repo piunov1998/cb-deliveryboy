@@ -1,10 +1,9 @@
 import argparse
-import ctypes
 import logging
 import platform
-import re
 import sys
 import traceback
+from enum import StrEnum
 from pathlib import Path
 
 import yaml
@@ -12,12 +11,19 @@ import yaml
 from config import Config
 from worker import Worker
 
+from service_manager import SystemdManager, WindowsServicesManager
+
 LOG_LEVELS = {
     'debug': logging.DEBUG,
     'info': logging.INFO,
     'warn': logging.WARNING,
     'error': logging.ERROR
 }
+
+
+class SupportedOS(StrEnum):
+    WINDOWS = "windows"
+    LINUX = "linux"
 
 
 def load_config(path: str | Path) -> Config:
@@ -28,6 +34,7 @@ def load_config(path: str | Path) -> Config:
 
 def is_admin():
     try:
+        import ctypes
         return ctypes.windll.shell32.IsUserAnAdmin()
     except Exception as e:
         logging.warning(f"Не удалось получить информацию о правах администратора -> {e}")
@@ -43,11 +50,10 @@ def main():
     fmt = f"[%(asctime)s] %(levelname)s | %(message)s"
     logging.basicConfig(level=LOG_LEVELS[namespace.log_level], stream=sys.stdout, format=fmt)
 
-    if not re.fullmatch("Windows-?.+", platform.platform(True, True), flags=re.IGNORECASE):
-        logging.fatal("Поддерживаются только Windows системы")
-        sys.exit(0)
+    os_name = platform.system().lower()
 
-    if not is_admin():
+    if os_name == SupportedOS.WINDOWS and not is_admin():
+        import ctypes
         logging.warning("Перезапуск с правами администратора")
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
         sys.exit(0)
@@ -60,7 +66,17 @@ def main():
         input("Нажмите Enter для выхода")
         sys.exit(1)
 
-    worker = Worker(config.tracking_files)
+    match os_name:
+        case SupportedOS.LINUX:
+            service_manager = SystemdManager()
+        case SupportedOS.WINDOWS:
+            service_manager = WindowsServicesManager()
+        case _:
+            logging.fatal(f"Система не поддерживается. Поддерживаемые системы: [{', '.join(SupportedOS)}]")
+            input("Нажмите Enter для выхода")
+            sys.exit(1)
+
+    worker = Worker(service_manager, config.tracking_files)
 
     try:
         worker.run()

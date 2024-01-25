@@ -1,13 +1,11 @@
 import logging as log
 import shutil
 import time
-from contextlib import contextmanager
 from pathlib import Path
 
-import win32serviceutil
 from pydantic import BaseModel
 
-SERVICE_STATUS = tuple[int, int, int, int, int, int, int]
+from service_manager import AbstractServiceManager
 
 
 class TrackingFile(BaseModel):
@@ -23,37 +21,24 @@ class TrackingFile(BaseModel):
         )
 
 
-@contextmanager
-def service_rerun(name: str):
-    log.info(f"Получение статуса сервиса {name}")
-    status: SERVICE_STATUS = win32serviceutil.QueryServiceStatus(name)
-
-    if status[1] != 1:
-        log.info(f"Остановка сервиса {name}")
-        win32serviceutil.StopService(name)
-
-    try:
-        yield
-    finally:
-        status: SERVICE_STATUS = win32serviceutil.QueryServiceStatus(name)
-        if status[1] == 1:
-            log.info(f"Запуск сервиса {name}")
-            win32serviceutil.StartService(name)
-
-
 class Worker:
 
-    def __init__(self, tracking_files: list[TrackingFile], interval: float = 1.0):
+    def __init__(
+        self,
+        service_manager: AbstractServiceManager,
+        tracking_files: list[TrackingFile],
+        interval: float = 1.0,
+    ):
+        self.service_manager = service_manager
         self.tracking_files = [file.absolute() for file in tracking_files]
         self.interval = interval
 
-    @staticmethod
-    def proceed(file: TrackingFile):
+    def proceed(self, file: TrackingFile):
         if not file.source.is_file():
             raise Exception(f"{file.source} не является файлом")
         log.info(f"Файл обнаружен -> {file.name}")
 
-        with service_rerun("ASM"):
+        with self.service_manager.service_rerun("ASM"):
             log.info("Замена исполняемого файла")
             shutil.move(file.source, file.dest)
 

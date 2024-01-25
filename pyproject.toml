@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "delivery"
+version = "1.0.0"
+description = ""
+authors = ["Anton Piunov <anton.piunov@cyberprotect.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pyyaml = "^6.0.1"
+pydantic = "^2.5.3"
+pywin32 = { version = "306", platform = "windows"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
