@@ -30,12 +30,12 @@ class SystemdManager(AbstractServiceManager):
     @classmethod
     def run(cls, name: str):
         _logger.info(f"Запуск сервиса {name}")
-        subprocess.run(f"systemctl start {name}", check=True)
+        subprocess.run(["systemctl", "start", name], check=True)
 
     @classmethod
     def stop(cls, name: str):
         _logger.info(f"Остановка сервиса {name}")
-        subprocess.run(f"systemctl stop {name}", check=True)
+        subprocess.run(["systemctl", "stop", name], check=True)
 
     @classmethod
     @contextmanager
